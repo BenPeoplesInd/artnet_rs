@@ -7,6 +7,7 @@ use std::io::Cursor;
 use std::io::Write;
 use std::io::Read;
 use byteorder::{WriteBytesExt, ReadBytesExt, LittleEndian, BigEndian};
+use std::convert::TryInto;
 
 
 const HEADER: [u8; 8] = [65, 114, 116, 45, 78, 101, 116, 0]; // "Art-Net"
@@ -34,6 +35,25 @@ pub enum OpCodeValues {
     OpCommand = 0x2400,
     OpDmx = 0x5000,
     Unknown = 0,
+}
+
+impl TryFrom<u16> for OpCodeValues {
+    type Error = ();
+
+    fn try_from(v: u16) -> Result<Self, Self::Error> {
+        match v {
+            x if x == OpCodeValues::OpPoll as u16 => Ok(OpCodeValues::OpPoll),
+            x if x == OpCodeValues::OpPollReply as u16 => Ok(OpCodeValues::OpPollReply),
+            x if x == OpCodeValues::OpTodRequest as u16 => Ok(OpCodeValues::OpTodRequest),
+            x if x == OpCodeValues::OpTodData as u16 => Ok(OpCodeValues::OpTodData),
+            x if x == OpCodeValues::OpTodControl as u16 => Ok(OpCodeValues::OpTodControl),
+            x if x == OpCodeValues::OpRdm as u16 => Ok(OpCodeValues::OpRdm),
+            x if x == OpCodeValues::OpCommand as u16 => Ok(OpCodeValues::OpCommand),
+            x if x == OpCodeValues::OpDmx as u16 => Ok(OpCodeValues::OpDmx),
+            x if x == OpCodeValues::Unknown as u16 => Ok(OpCodeValues::Unknown),
+            _ => Err(()),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -84,9 +104,72 @@ impl ArtPkt {
         }
     }
 
-    pub fn deserialize(&self) -> Option<ArtPkt> {
-        
+    pub fn deserialize(data : &Vec<u8>) -> Option<ArtPkt> {
+
+        let mut pkt : ArtPkt = ArtPkt::new();
+
+        // if packet is too short, return None
+        if data.len() < 12 {
+            return None;
+        }
+
+        // Does it say Art-Net at the top?
+        if data[0..8] != HEADER {
+            return None;
+        }
+
+        match u16::from_le_bytes(data[8..10].try_into().unwrap()).try_into() {
+            Ok(OpCodeValues::OpPoll) => {
+                if data.len() > 13 {
+                    let inner : Option<OpPoll> = OpPoll::deserialize(data);
+                    match inner {
+                        Some(depkt) => return Some(ArtPkt::OpPoll(depkt)),
+                        None => return None
+                    }
+                } else {
+                    return None;
+                }
+            },
+            Ok(OpCodeValues::OpPollReply) => {
+                if data.len() > 13 /* FIXME: this number is wrong */ {
+                    let inner : Option<OpPollReply> = OpPollReply::deserialize(data);
+                    match inner {
+                        Some(depkt) => return Some(ArtPkt::OpPollReply(depkt)),
+                        None => return None
+                    }
+                } else {
+                    return None;
+                }
+            },
+            Ok(OpCodeValues::OpTodRequest) => println!("The value is OpTodRequest"),
+            Ok(OpCodeValues::OpTodData) => println!("The value is OpTodData"),
+            Ok(OpCodeValues::OpTodControl) => println!("The value is OpTodControl"),
+            Ok(OpCodeValues::OpRdm) => println!("The value is OpRdm"),
+            Ok(OpCodeValues::OpCommand) => println!("The value is OpCommand"),
+            Ok(OpCodeValues::OpDmx) => println!("The value is OpDmx"),
+            Ok(_) => println!("No match"),
+            Err(_) => println!("No match")
+        }
+
         return None;
+        /*
+        match n {
+        OpCodeValues::OpPoll => println!("The value is OpPoll"),
+        OpCodeValues::OpPollReply => println!("The value is OpPollReply"),
+        OpCodeValues::OpTodRequest => println!("The value is OpTodRequest"),
+        OpCodeValues::OpTodData => println!("The value is OpTodData"),
+        OpCodeValues::OpTodControl => println!("The value is OpTodControl"),
+        OpCodeValues::OpRdm => println!("The value is OpRdm"),
+        OpCodeValues::OpCommand => println!("The value is OpCommand"),
+        OpCodeValues::OpDmx => println!("The value is OpDmx"),
+        // If the value of `n` doesn't match any of the enum values,
+        // the default case will be executed.
+        _ => println!("The value doesn't match any of the enum values"),
+    }
+}
+
+        */
+
     }
 
 }
