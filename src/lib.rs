@@ -49,6 +49,48 @@ pub enum ArtPkt {
     Unknown(String),
 }
 
+impl ArtPkt {
+    pub fn new() -> ArtPkt {
+        ArtPkt::Unknown("".to_string())
+    }
+
+    pub fn serialize(&self) -> Vec<u8> {
+        match self {
+            ArtPkt::OpPoll(data) => {
+                return data.serialize();
+            },
+            ArtPkt::OpPollReply(data) => {
+                return data.serialize();
+            },
+            ArtPkt::OpTodRequest(data) => {
+                return data.serialize();
+            },
+            ArtPkt::OpTodData(data) => {
+                return data.serialize();
+            },
+            ArtPkt::OpTodControl(data) => {
+                return data.serialize();
+            },
+            ArtPkt::OpRdm(data) => {
+                return data.serialize();
+            },
+            ArtPkt::OpCommand(data) => {
+                return data.serialize();
+            },
+            ArtPkt::OpDmx(data) => {
+                return data.serialize();
+            },
+            _ => return Vec::new()
+        }
+    }
+
+    pub fn deserialize(&self) -> Option<ArtPkt> {
+        
+        return None;
+    }
+
+}
+
 
 #[derive(Debug)]
 pub struct OpPoll {
