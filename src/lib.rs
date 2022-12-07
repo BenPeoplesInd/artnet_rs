@@ -567,6 +567,65 @@ pub struct OpRdm {
     rdm_packet: Vec<u8>,
 }
 
+impl OpRdm {
+    pub fn new() ->  OpRdm {
+        OpRdm { 
+            rdm_ver: 1, 
+            net: 0, 
+            command: 0, 
+            address: 0, 
+            rdm_packet: Vec::new() 
+        }
+    }
+
+    pub fn serialize(&self) -> Vec<u8> {
+        let mut data = Vec::new();
+        let mut cursor = Cursor::new(&mut data);
+
+        // Art-Net header
+        cursor.write_all(&HEADER).unwrap();
+        
+        // OpCode
+        cursor.write_u16::<LittleEndian>(OpCodeValues::OpRdm as u16).unwrap();
+        
+        // ProtVerHi = 0
+        cursor.write_u8(0x00).unwrap();
+        // ProtVerLo = 14
+        cursor.write_u8(14).unwrap();
+
+        cursor.write_u8(self.rdm_ver).unwrap();
+
+        // Pad/spare data
+        cursor.write_all(&[0 as u8; 8]).unwrap();
+
+        cursor.write_u8(self.net).unwrap();
+        cursor.write_u8(self.command).unwrap();
+        cursor.write_u8(self.address).unwrap();        
+
+        cursor.write_all(&self.rdm_packet).unwrap();
+
+        return data;
+    }
+
+    /// Assumes the packet has already been verified to be an ArtPoll
+    pub fn deserialize(data : &Vec<u8>) -> Option<OpRdm> {
+        let mut rv = OpRdm::new();
+
+        rv.rdm_ver = data[11];
+
+        rv.net = data[20];
+        rv.command = data[21];
+        rv.address = data[22];
+        
+
+        // packet is in &data[23..]
+
+        rv.rdm_packet = Vec::from(&data[23..]);
+
+        return Some(rv);
+    }
+
+}
 
 
 #[derive(Debug)]
@@ -574,6 +633,58 @@ pub struct OpCommand {
     esta_mfg: u16,
     length: u16,
     data: Vec<u8>,
+}
+
+impl OpCommand{
+    pub fn new() ->  OpCommand {
+        OpCommand { 
+            esta_mfg: 0, 
+            length: 0, 
+            data: Vec::new() 
+        }
+    }
+
+    pub fn serialize(&self) -> Vec<u8> {
+        let mut data = Vec::new();
+        let mut cursor = Cursor::new(&mut data);
+
+        // Art-Net header
+        cursor.write_all(&HEADER).unwrap();
+        
+        // OpCode
+        cursor.write_u16::<LittleEndian>(OpCodeValues::OpCommand as u16).unwrap();
+        
+        // ProtVerHi = 0
+        cursor.write_u8(0x00).unwrap();
+        // ProtVerLo = 14
+        cursor.write_u8(14).unwrap();
+
+        cursor.write_u16::<BigEndian>(self.esta_mfg).unwrap();
+        cursor.write_u16::<BigEndian>(self.length).unwrap();
+
+        cursor.write_all(&self.data).unwrap();
+
+        return data;
+    }
+
+    /// Assumes the packet has already been verified to be an ArtPoll
+    pub fn deserialize(data : &Vec<u8>) -> Option<OpCommand> {
+        let mut rv = OpCommand::new();
+        let mut cursor = Cursor::new(data);
+
+        let mut pad_bytes : [u8; 12] = [0; 12];
+        cursor.read_exact(&mut pad_bytes).unwrap();
+
+        rv.esta_mfg = cursor.read_u16::<BigEndian>().unwrap();
+        rv.length = cursor.read_u16::<BigEndian>().unwrap();
+        
+        for i in 0..rv.length {
+            rv.data.push(cursor.read_u8().unwrap());
+        }
+
+        return Some(rv);
+    }
+
 }
 
 #[derive(Debug)]
@@ -585,7 +696,87 @@ pub struct OpDmx {
     data: Vec<u8>,
 }
 
+impl OpDmx {
+    pub fn new() ->  OpDmx {
+        OpDmx { 
+            sequence: 0, 
+            physical: 0, 
+            universe: 0, 
+            length: 0, 
+            data: Vec::new() 
+        }
+    }
+
+    pub fn serialize(&self) -> Vec<u8> {
+        let mut data = Vec::new();
+        let mut cursor = Cursor::new(&mut data);
+
+        // Art-Net header
+        cursor.write_all(&HEADER).unwrap();
+        
+        // OpCode
+        cursor.write_u16::<LittleEndian>(OpCodeValues::OpDmx as u16).unwrap();
+        
+        // ProtVerHi = 0
+        cursor.write_u8(0x00).unwrap();
+        // ProtVerLo = 14
+        cursor.write_u8(14).unwrap();
+
+        cursor.write_u8(self.sequence).unwrap();
+        cursor.write_u8(self.physical).unwrap();
+
+        cursor.write_u16::<LittleEndian>(self.universe).unwrap();
+
+        cursor.write_u16::<BigEndian>(self.length).unwrap();
+
+        cursor.write_all(&self.data).unwrap();
+        
+        return data;
+    }
+
+    /// Assumes the packet has already been verified to be an ArtPoll
+    pub fn deserialize(data : &Vec<u8>) -> Option<OpDmx> {
+        let mut rv = OpDmx::new();
+        let mut cursor = Cursor::new(data);
+
+        let mut pad_bytes : [u8; 12] = [0; 12];
+        cursor.read_exact(&mut pad_bytes).unwrap();
+
+        rv.sequence = cursor.read_u8().unwrap();
+        rv.physical = cursor.read_u8().unwrap();
+
+        rv.universe = cursor.read_u16::<LittleEndian>().unwrap();
+        rv.length = cursor.read_u16::<BigEndian>().unwrap();
+        
+        for i in 0..rv.length {
+            rv.data.push(cursor.read_u8().unwrap());
+        }
+
+        return Some(rv);
+    }
+}
+
 #[derive(Debug)]
 pub struct OpError {
     code: String,
+}
+
+impl OpError {
+    pub fn new() ->  OpError {
+        OpError { code: "".to_string() }
+    }
+
+    pub fn serialize(&self) -> Vec<u8> {
+        let mut data = Vec::new();
+        
+        return data;
+    }
+
+    /// Assumes the packet has already been verified to be an ArtPoll
+    pub fn deserialize(data : &Vec<u8>) -> Option<OpError> {
+        let mut rv = OpError::new();
+       
+
+        return Some(rv);
+    }
 }
