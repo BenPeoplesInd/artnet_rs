@@ -441,22 +441,22 @@ impl OpPollReply {
 
         rv.ip_address = IpAddr::from(ip_bytes);
         // Read port
-        rv.port = match cursor.read_u16::<LittleEndian>() {
+        rv.port = match cursor.read_u16::<BigEndian>() {
                 Ok(n) => n,
                 Err(_) => return None,
             };
         // Read vers info
-        rv.vers_info = match cursor.read_u16::<LittleEndian>() {
+        rv.vers_info = match cursor.read_u16::<BigEndian>() {
                 Ok(n) => n,
                 Err(_) => return None,
             };
         // Read universe switch
-        rv.universe_switch = match cursor.read_u16::<LittleEndian>() {
+        rv.universe_switch = match cursor.read_u16::<BigEndian>() {
                 Ok(n) => n,
                 Err(_) => return None,
             };
         // Read oem
-        rv.oem = match cursor.read_u16::<LittleEndian>() {
+        rv.oem = match cursor.read_u16::<BigEndian>() {
                 Ok(n) => n,
                 Err(_) => return None,
             };
@@ -471,7 +471,7 @@ impl OpPollReply {
                 Err(_) => return None,
             };
         // Read esta mfg
-        rv.esta_mfg = match cursor.read_u16::<LittleEndian>() {
+        rv.esta_mfg = match cursor.read_u16::<BigEndian>() {
                 Ok(n) => n,
                 Err(_) => return None,
             };
@@ -496,7 +496,7 @@ impl OpPollReply {
         }
         rv.node_report = String::from_utf8_lossy(CStr::from_bytes_until_nul(&node_report_bytes).unwrap().to_bytes()).to_string(); // 172
 
-        rv.num_ports = match cursor.read_u16::<LittleEndian>() {
+        rv.num_ports = match cursor.read_u16::<BigEndian>() {
                 Ok(n) => n,
                 Err(_) => return None,
             };
