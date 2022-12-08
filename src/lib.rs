@@ -249,8 +249,8 @@ pub struct OpPollReply {
     pub sw_in: [u8; 4],
     pub sw_out: [u8; 4],
     pub priority: u8,
-    pub sw_macro: [u8; 4],
-    pub sw_remote: [u8; 4],
+    pub sw_macro: u8,
+    pub sw_remote: u8,
     pub style: u8,
     pub mac: MacAddress,
     pub bind_ip: IpAddr,
@@ -282,8 +282,8 @@ impl OpPollReply {
             sw_in: [0; 4], 
             sw_out: [0; 4], 
             priority: 100, 
-            sw_macro: [0; 4], 
-            sw_remote: [0; 4], 
+            sw_macro: 0, 
+            sw_remote: 0, 
             style : 0,
             mac: MacAddress::new([0,0,0,0,0,0]), 
             bind_ip: IpAddr::V4(Ipv4Addr::new(0,0,0,0)), 
@@ -389,9 +389,9 @@ impl OpPollReply {
         // Write priority
         cursor.write_u8(self.priority).unwrap();
         // Write sw macro
-        cursor.write_all(&self.sw_macro).unwrap();
+        cursor.write_u8(self.sw_macro).unwrap();
         // Write sw remote
-        cursor.write_all(&self.sw_remote).unwrap();
+        cursor.write_u8(self.sw_remote).unwrap();
 
         cursor.write_all(&[0 as u8; 3]).unwrap();
 
@@ -522,12 +522,15 @@ impl OpPollReply {
                 Err(_) => return None,
             };
 
-        if let Err(_) = cursor.read_exact(&mut rv.sw_macro) {
-            return None;
-        }
-        if let Err(_) = cursor.read_exact(&mut rv.sw_remote) {
-            return None;
-        }
+        rv.sw_macro = match cursor.read_u8() {
+            Ok(n) => n,
+            Err(_) => return None,
+        };
+
+        rv.sw_remote = match cursor.read_u8() {
+            Ok(n) => n,
+            Err(_) => return None,
+        };
         
         let mut spare_bytes : [u8; 3] = [0; 3]; 
 
