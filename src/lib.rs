@@ -451,11 +451,11 @@ impl OpPollReply {
                 Err(_) => return None,
             };
         // Read universe switch
-        let low_bytes : u8 = match cursor.read_u8() {
+        let high_bytes : u8 = match cursor.read_u8() {
             Ok(n) => n,
             Err(_) => return None,
         };
-        let high_bytes : u8 = match cursor.read_u8() {
+        let low_bytes : u8 = match cursor.read_u8() {
             Ok(n) => n,
             Err(_) => return None,
         };
