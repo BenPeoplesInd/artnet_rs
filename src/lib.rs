@@ -341,7 +341,7 @@ impl OpPollReply {
         // Write long name
         let long_name_bytes = self.long_name.as_bytes();
 
-        let mut long_name_array : [u8; 18] = [0; 18];
+        let mut long_name_array : [u8; 64] = [0; 64];
 
         let mut index = 0;
 
@@ -358,7 +358,7 @@ impl OpPollReply {
 
         let node_report_bytes = self.node_report.as_bytes();
 
-        let mut node_report_array : [u8; 18] = [0; 18];
+        let mut node_report_array : [u8; 64] = [0; 64];
 
         let mut index = 0;
 
