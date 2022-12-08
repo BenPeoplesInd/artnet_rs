@@ -12,18 +12,6 @@ use std::convert::TryInto;
 
 const HEADER: [u8; 8] = [65, 114, 116, 45, 78, 101, 116, 0]; // "Art-Net"
 
-// pub fn art_serialize(op_code: OpCode) -> Result<Vec<u8>, OpError> {
-//     bincode::serialize(&op_code).or(Err(OpError {
-//         code: "Serialization error.".to_string(),
-//     }))
-// }
-
-// pub fn art_deserialize(bytes: &[u8]) -> Result<OpCode, OpError> {
-//     bincode::deserialize(bytes).or(Err(OpError {
-//         code: "Deserialization error.".to_string(),
-//     }))
-// }
-
 #[derive(Debug)]
 pub enum OpCodeValues {
     OpPoll = 0x2000,
@@ -106,69 +94,80 @@ impl ArtPkt {
 
     pub fn deserialize(data : &Vec<u8>) -> Option<ArtPkt> {
 
-        let mut pkt : ArtPkt = ArtPkt::new();
-
         // if packet is too short, return None
         if data.len() < 12 {
             return None;
         }
 
         // Does it say Art-Net at the top?
-        if data[0..8] != HEADER {
+        if !data.starts_with(&HEADER) {
             return None;
         }
 
-        match u16::from_le_bytes(data[8..10].try_into().unwrap()).try_into() {
-            Ok(OpCodeValues::OpPoll) => {
-                if data.len() > 13 {
-                    let inner : Option<OpPoll> = OpPoll::deserialize(data);
-                    match inner {
-                        Some(depkt) => return Some(ArtPkt::OpPoll(depkt)),
-                        None => return None
-                    }
-                } else {
-                    return None;
+        // Check the opcode
+        match u16::from_le_bytes(data[8..10].try_into().unwrap_or_default()).try_into() {
+            Ok(OpCodeValues::OpPoll) => {   
+                let inner : Option<OpPoll> = OpPoll::deserialize(data);
+                match inner {
+                    Some(depkt) => return Some(ArtPkt::OpPoll(depkt)),
+                    None => return None
                 }
             },
             Ok(OpCodeValues::OpPollReply) => {
-                if data.len() > 13 /* FIXME: this number is wrong */ {
-                    let inner : Option<OpPollReply> = OpPollReply::deserialize(data);
-                    match inner {
-                        Some(depkt) => return Some(ArtPkt::OpPollReply(depkt)),
-                        None => return None
-                    }
-                } else {
-                    return None;
+                let inner : Option<OpPollReply> = OpPollReply::deserialize(data);
+                match inner {
+                    Some(depkt) => return Some(ArtPkt::OpPollReply(depkt)),
+                    None => return None
                 }
             },
-            Ok(OpCodeValues::OpTodRequest) => println!("The value is OpTodRequest"),
-            Ok(OpCodeValues::OpTodData) => println!("The value is OpTodData"),
-            Ok(OpCodeValues::OpTodControl) => println!("The value is OpTodControl"),
-            Ok(OpCodeValues::OpRdm) => println!("The value is OpRdm"),
-            Ok(OpCodeValues::OpCommand) => println!("The value is OpCommand"),
-            Ok(OpCodeValues::OpDmx) => println!("The value is OpDmx"),
-            Ok(_) => println!("No match"),
+            Ok(OpCodeValues::OpTodRequest) => {
+                let inner : Option<OpTodRequest> = OpTodRequest::deserialize(data);
+                match inner {
+                    Some(depkt) => return Some(ArtPkt::OpTodRequest(depkt)),
+                    None => return None
+                }
+            },
+            Ok(OpCodeValues::OpTodData) =>  {
+                let inner : Option<OpTodData> = OpTodData::deserialize(data);
+                match inner {
+                    Some(depkt) => return Some(ArtPkt::OpTodData(depkt)),
+                    None => return None
+                }
+            },
+            Ok(OpCodeValues::OpTodControl) =>  {
+                let inner : Option<OpTodControl> = OpTodControl::deserialize(data);
+                match inner {
+                    Some(depkt) => return Some(ArtPkt::OpTodControl(depkt)),
+                    None => return None
+                }
+            },
+            Ok(OpCodeValues::OpRdm) =>  {
+                let inner : Option<OpRdm> = OpRdm::deserialize(data);
+                match inner {
+                    Some(depkt) => return Some(ArtPkt::OpRdm(depkt)),
+                    None => return None
+                }
+            },
+            Ok(OpCodeValues::OpCommand) =>  {
+                let inner : Option<OpCommand> = OpCommand::deserialize(data);
+                match inner {
+                    Some(depkt) => return Some(ArtPkt::OpCommand(depkt)),
+                    None => return None
+                }
+            },
+            Ok(OpCodeValues::OpDmx) =>  {
+                let inner : Option<OpDmx> = OpDmx::deserialize(data);
+                match inner {
+                    Some(depkt) => return Some(ArtPkt::OpDmx(depkt)),
+                    None => return None
+                }
+            },
+            Ok(_) => println!("No match, but OK"),
             Err(_) => println!("No match")
         }
 
         return None;
-        /*
-        match n {
-        OpCodeValues::OpPoll => println!("The value is OpPoll"),
-        OpCodeValues::OpPollReply => println!("The value is OpPollReply"),
-        OpCodeValues::OpTodRequest => println!("The value is OpTodRequest"),
-        OpCodeValues::OpTodData => println!("The value is OpTodData"),
-        OpCodeValues::OpTodControl => println!("The value is OpTodControl"),
-        OpCodeValues::OpRdm => println!("The value is OpRdm"),
-        OpCodeValues::OpCommand => println!("The value is OpCommand"),
-        OpCodeValues::OpDmx => println!("The value is OpDmx"),
-        // If the value of `n` doesn't match any of the enum values,
-        // the default case will be executed.
-        _ => println!("The value doesn't match any of the enum values"),
-    }
-}
 
-        */
 
     }
 
@@ -177,8 +176,8 @@ impl ArtPkt {
 
 #[derive(Debug)]
 pub struct OpPoll {
-    flags: u8,
-    diag_priority: u8,
+    pub flags: u8,
+    pub diag_priority: u8,
 }
 
 impl OpPoll {
@@ -211,6 +210,11 @@ impl OpPoll {
 
     /// Assumes the packet has already been verified to be an ArtPoll
     pub fn deserialize(data : &Vec<u8>) -> Option<OpPoll> {
+
+        if data.len() < 14 {
+            return None;
+        }
+
         let mut rv = OpPoll::new();
 
         rv.flags = data[12];
@@ -224,34 +228,34 @@ impl OpPoll {
 // Cannot derive SerDes here for MacAddress
 #[derive(Debug)]
 pub struct OpPollReply {
-    ip_address: IpAddr,
-    port: u16,
-    vers_info: u16,
-    universe_switch: u16,
-    oem: u16,
-    ubea_version: u8,
-    status1: u8,
-    esta_mfg: u16,
-    short_name: String,
-    long_name: String,
-    node_report: String,
-    num_ports: u16,
-    port_types: [u8; 4],
-    good_input: [u8; 4],
-    good_output: [u8; 4],
-    sw_in: [u8; 4],
-    sw_out: [u8; 4],
-    priority: u8,
-    sw_macro: [u8; 4],
-    sw_remote: [u8; 4],
-    style: u8,
-    mac: MacAddress,
-    bind_ip: IpAddr,
-    bind_index: u8,
-    status2: u8,
-    good_output_b: [u8; 4],
-    status3: u8,
-    default_responder: Uid,
+    pub ip_address: IpAddr,
+    pub port: u16,
+    pub vers_info: u16,
+    pub universe_switch: u16,
+    pub oem: u16,
+    pub ubea_version: u8,
+    pub status1: u8,
+    pub esta_mfg: u16,
+    pub short_name: String,
+    pub long_name: String,
+    pub node_report: String,
+    pub num_ports: u16,
+    pub port_types: [u8; 4],
+    pub good_input: [u8; 4],
+    pub good_output: [u8; 4],
+    pub sw_in: [u8; 4],
+    pub sw_out: [u8; 4],
+    pub priority: u8,
+    pub sw_macro: [u8; 4],
+    pub sw_remote: [u8; 4],
+    pub style: u8,
+    pub mac: MacAddress,
+    pub bind_ip: IpAddr,
+    pub bind_index: u8,
+    pub status2: u8,
+    pub good_output_b: [u8; 4],
+    pub status3: u8,
+    pub default_responder: Uid,
 }
 
 impl OpPollReply {
@@ -383,74 +387,146 @@ impl OpPollReply {
 
         let mut pad_bytes : [u8; 10] = [0; 10];
 
-        cursor.read_exact(&mut pad_bytes).unwrap();
+        if let Err(_) = cursor.read_exact(&mut pad_bytes) {
+            return None;
+        }
 
         let mut ip_bytes = [0; 4];
-        cursor.read_exact(&mut ip_bytes).unwrap();
+        if let Err(_) = cursor.read_exact(&mut ip_bytes) {
+            return None;
+        }
+
         rv.ip_address = IpAddr::from(ip_bytes);
         // Read port
-        rv.port = cursor.read_u16::<LittleEndian>().unwrap();
+        rv.port = match cursor.read_u16::<LittleEndian>() {
+                Ok(n) => n,
+                Err(_) => return None,
+            };
         // Read vers info
-        rv.vers_info = cursor.read_u16::<LittleEndian>().unwrap();
+        rv.vers_info = match cursor.read_u16::<LittleEndian>() {
+                Ok(n) => n,
+                Err(_) => return None,
+            };
         // Read universe switch
-        rv.universe_switch = cursor.read_u16::<LittleEndian>().unwrap();
+        rv.universe_switch = match cursor.read_u16::<LittleEndian>() {
+                Ok(n) => n,
+                Err(_) => return None,
+            };
         // Read oem
-        rv.oem = cursor.read_u16::<LittleEndian>().unwrap();
+        rv.oem = match cursor.read_u16::<LittleEndian>() {
+                Ok(n) => n,
+                Err(_) => return None,
+            };
         // Read ubea version
-        rv.ubea_version = cursor.read_u8().unwrap();
+        rv.ubea_version = match cursor.read_u8() {
+                Ok(n) => n,
+                Err(_) => return None,
+            };
         // Read status1
-        rv.status1 = cursor.read_u8().unwrap();
+        rv.status1 = match cursor.read_u8() {
+                Ok(n) => n,
+                Err(_) => return None,
+            };
         // Read esta mfg
-        rv.esta_mfg = cursor.read_u16::<LittleEndian>().unwrap();
+        rv.esta_mfg = match cursor.read_u16::<LittleEndian>() {
+                Ok(n) => n,
+                Err(_) => return None,
+            };
         // Read short name
         let mut short_name_bytes = [0; 18];
-        cursor.read_exact(&mut short_name_bytes).unwrap();
+        if let Err(_) = cursor.read_exact(&mut short_name_bytes) {
+            return None;
+        }
         rv.short_name = String::from_utf8_lossy(&short_name_bytes).to_string();
         // Read long name
         let mut long_name_bytes = [0; 64];
-        cursor.read_exact(&mut long_name_bytes).unwrap();
+        if let Err(_) = cursor.read_exact(&mut long_name_bytes) {
+            return None;
+        }
         rv.long_name = String::from_utf8_lossy(&long_name_bytes).to_string();
         // Read node report
         let mut node_report_bytes = [0; 64];
-        cursor.read_exact(&mut node_report_bytes).unwrap();
-        rv.node_report = String::from_utf8_lossy(&node_report_bytes).to_string();
+        if let Err(_) = cursor.read_exact(&mut node_report_bytes) {
+            return None;
+        }
+        rv.node_report = String::from_utf8_lossy(&node_report_bytes).to_string(); // 172
 
-        rv.num_ports = cursor.read_u16::<LittleEndian>().unwrap();
+        rv.num_ports = match cursor.read_u16::<LittleEndian>() {
+                Ok(n) => n,
+                Err(_) => return None,
+            };
 
-        cursor.read_exact(&mut rv.port_types).unwrap();
-        cursor.read_exact(&mut rv.good_input).unwrap();
-        cursor.read_exact(&mut rv.good_output).unwrap();
-        cursor.read_exact(&mut rv.sw_in).unwrap();
-        cursor.read_exact(&mut rv.sw_out).unwrap();
+        if let Err(_) = cursor.read_exact(&mut rv.port_types) {
+            return None;
+        }
+        if let Err(_) = cursor.read_exact(&mut rv.good_input) {
+            return None;
+        }
+        if let Err(_) = cursor.read_exact(&mut rv.good_output) {
+            return None;
+        }
+        if let Err(_) = cursor.read_exact(&mut rv.sw_in) {
+            return None;
+        }
+        if let Err(_) = cursor.read_exact(&mut rv.sw_out) {
+            return None;
+        }
         
-        rv.priority = cursor.read_u8().unwrap();
+        rv.priority = match cursor.read_u8() {
+                Ok(n) => n,
+                Err(_) => return None,
+            };
 
-        cursor.read_exact(&mut rv.sw_macro).unwrap();
-        cursor.read_exact(&mut rv.sw_remote).unwrap();
+        if let Err(_) = cursor.read_exact(&mut rv.sw_macro) {
+            return None;
+        }
+        if let Err(_) = cursor.read_exact(&mut rv.sw_remote) {
+            return None;
+        }
         
-        let mut spare_bytes : [u8; 3] = [0; 3];
+        let mut spare_bytes : [u8; 3] = [0; 3]; 
 
-        cursor.read_exact(&mut spare_bytes).unwrap();
+        if let Err(_) = cursor.read_exact(&mut spare_bytes) {
+            return None;
+        }
 
-        rv.style = cursor.read_u8().unwrap();
+        rv.style = match cursor.read_u8() {
+                Ok(n) => n,
+                Err(_) => return None,
+            };
 
-        let mut mac_bytes : [u8; 6] = [0; 6];
+        let mut mac_bytes : [u8; 6] = [0; 6]; 
 
-        cursor.read_exact(&mut mac_bytes).unwrap();
+        if let Err(_) = cursor.read_exact(&mut mac_bytes) {
+            return None;
+        }
 
-        rv.mac = MacAddress::from_bytes(&mac_bytes).unwrap();
+        rv.mac = MacAddress::from_bytes(&mac_bytes).unwrap_or_default(); 
 
-        rv.bind_index = cursor.read_u8().unwrap();
-        rv.status2 = cursor.read_u8().unwrap();
+        rv.bind_index = match cursor.read_u8() {
+                Ok(n) => n,
+                Err(_) => return None,
+            };
+        rv.status2 = match cursor.read_u8() {
+                Ok(n) => n,
+                Err(_) => return None,
+            };
 
-        cursor.read_exact(&mut rv.good_output_b).unwrap();
+        if let Err(_) = cursor.read_exact(&mut rv.good_output_b) {
+            return None;
+        }
 
-        rv.status3 = cursor.read_u8().unwrap();
+        rv.status3 = match cursor.read_u8() {
+                Ok(n) => n,
+                Err(_) => return None,
+            }; // 47 
 
 
         let mut uid_bytes : [u8; 6] = [0; 6];
 
-        cursor.read_exact(&mut uid_bytes).unwrap();
+        if let Err(_) = cursor.read_exact(&mut uid_bytes) {
+            return None;
+        }
 
         rv.default_responder = Uid::from_bytes(&uid_bytes);
 
@@ -461,10 +537,10 @@ impl OpPollReply {
 
 #[derive(Debug)]
 pub struct OpTodRequest {
-    net: u8,
-    command: u8,
-    add_count: u8,
-    address: [u8; 32],
+    pub net: u8,
+    pub command: u8,
+    pub add_count: u8,
+    pub address: [u8; 32],
 }
 
 impl OpTodRequest {
@@ -511,14 +587,29 @@ impl OpTodRequest {
 
         let mut pad_bytes : [u8; 21] = [0; 21];
 
-        cursor.read_exact(&mut pad_bytes).unwrap();
+        if let Err(_) = cursor.read_exact(&mut pad_bytes) {
+            return None;
+        }
 
-        rv.net = cursor.read_u8().unwrap();
-        rv.command = cursor.read_u8().unwrap();
-        rv.add_count = cursor.read_u8().unwrap();
+        rv.net = match cursor.read_u8() {
+            Ok(n) => n,
+            Err(_) => return None,
+        };
+
+        rv.command = match cursor.read_u8() {
+            Ok(n) => n,
+            Err(_) => return None,
+        };
+        rv.add_count = match cursor.read_u8() {
+            Ok(n) => n,
+            Err(_) => return None,
+        };
 
         for i in 0..(rv.add_count as usize) {
-            rv.address[i] = cursor.read_u8().unwrap();
+            rv.address[i] = match cursor.read_u8() {
+                Ok(n) => n,
+                Err(_) => return None,
+            };
         }
 
         return Some(rv);
@@ -529,16 +620,16 @@ impl OpTodRequest {
 
 #[derive(Debug)]
 pub struct OpTodData {
-    rdm_ver: u8,
-    port: u8,
-    bind_index: u8,
-    net: u8,
-    command_response: u8,
-    address: u8,
-    uid_total: u16,
-    block_count: u8,
-    uid_count: u8,
-    tod: Vec<Uid>,
+    pub rdm_ver: u8,
+    pub port: u8,
+    pub bind_index: u8,
+    pub net: u8,
+    pub command_response: u8,
+    pub address: u8,
+    pub uid_total: u16,
+    pub block_count: u8,
+    pub uid_count: u8,
+    pub tod: Vec<Uid>,
 }
 
 impl OpTodData {
@@ -603,25 +694,58 @@ impl OpTodData {
         let mut cursor = Cursor::new(data);
 
         let mut pad_bytes : [u8; 12] = [0; 12];
-        cursor.read_exact(&mut pad_bytes).unwrap();
+        if let Err(_) = cursor.read_exact(&mut pad_bytes) {
+            return None;
+        }
 
-        rv.rdm_ver = cursor.read_u8().unwrap();
-        rv.port = cursor.read_u8().unwrap();
+        rv.rdm_ver = match cursor.read_u8() {
+                Ok(n) => n,
+                Err(_) => return None,
+            };
+        rv.port = match cursor.read_u8() {
+                Ok(n) => n,
+                Err(_) => return None,
+            };
         
         let mut pad_bytes : [u8; 6] = [0; 6];
-        cursor.read_exact(&mut pad_bytes).unwrap();
+        if let Err(_) = cursor.read_exact(&mut pad_bytes) {
+            return None;
+        }
 
-        rv.bind_index = cursor.read_u8().unwrap();
-        rv.net = cursor.read_u8().unwrap();
-        rv.command_response = cursor.read_u8().unwrap();
-        rv.address = cursor.read_u8().unwrap();
-        rv.uid_total = cursor.read_u16::<BigEndian>().unwrap();
-        rv.block_count = cursor.read_u8().unwrap();
-        rv.uid_count = cursor.read_u8().unwrap();
+        rv.bind_index = match cursor.read_u8() {
+                Ok(n) => n,
+                Err(_) => return None,
+            };
+        rv.net = match cursor.read_u8() {
+                Ok(n) => n,
+                Err(_) => return None,
+            };
+        rv.command_response = match cursor.read_u8() {
+                Ok(n) => n,
+                Err(_) => return None,
+            };
+        rv.address = match cursor.read_u8() {
+                Ok(n) => n,
+                Err(_) => return None,
+            };
+        rv.uid_total = match cursor.read_u16::<BigEndian>() {
+                Ok(n) => n,
+                Err(_) => return None,
+            };
+        rv.block_count = match cursor.read_u8() {
+                Ok(n) => n,
+                Err(_) => return None,
+            };
+        rv.uid_count = match cursor.read_u8() {
+                Ok(n) => n,
+                Err(_) => return None,
+            };
 
         for i in 0..(rv.uid_count as usize) {
             let mut uid_bytes : [u8; 6] = [0; 6];
-            cursor.read_exact(&mut uid_bytes).unwrap();
+            if let Err(_) = cursor.read_exact(&mut uid_bytes) {
+                return None;
+            }
 
             rv.tod.push(Uid::from_bytes(&uid_bytes));
             
@@ -635,9 +759,9 @@ impl OpTodData {
 
 #[derive(Debug)]
 pub struct OpTodControl {
-    net: u8,
-    command: u8,
-    address: u8,
+    pub net: u8,
+    pub command: u8,
+    pub address: u8,
 }
 
 impl OpTodControl {
@@ -672,6 +796,11 @@ impl OpTodControl {
 
     /// Assumes the packet has already been verified to be an ArtPoll
     pub fn deserialize(data : &Vec<u8>) -> Option<OpTodControl> {
+
+        if data.len() < 24 {
+            return None;
+        }
+
         let mut rv = OpTodControl::new();
 
         rv.net = data[21];
@@ -685,11 +814,11 @@ impl OpTodControl {
 
 #[derive(Debug)]
 pub struct OpRdm {
-    rdm_ver: u8,
-    net: u8,
-    command: u8,
-    address: u8,
-    rdm_packet: Vec<u8>,
+    pub rdm_ver: u8,
+    pub net: u8,
+    pub command: u8,
+    pub address: u8,
+    pub rdm_packet: Vec<u8>,
 }
 
 impl OpRdm {
@@ -734,6 +863,10 @@ impl OpRdm {
 
     /// Assumes the packet has already been verified to be an ArtPoll
     pub fn deserialize(data : &Vec<u8>) -> Option<OpRdm> {
+        if data.len() < 24 {
+            return None;
+        }
+
         let mut rv = OpRdm::new();
 
         rv.rdm_ver = data[11];
@@ -755,9 +888,9 @@ impl OpRdm {
 
 #[derive(Debug)]
 pub struct OpCommand {
-    esta_mfg: u16,
-    length: u16,
-    data: Vec<u8>,
+    pub esta_mfg: u16,
+    pub length: u16,
+    pub data: Vec<u8>,
 }
 
 impl OpCommand{
@@ -798,13 +931,25 @@ impl OpCommand{
         let mut cursor = Cursor::new(data);
 
         let mut pad_bytes : [u8; 12] = [0; 12];
-        cursor.read_exact(&mut pad_bytes).unwrap();
+        if let Err(_) = cursor.read_exact(&mut pad_bytes) {
+            return None;
+        }
 
-        rv.esta_mfg = cursor.read_u16::<BigEndian>().unwrap();
-        rv.length = cursor.read_u16::<BigEndian>().unwrap();
+        rv.esta_mfg = match cursor.read_u16::<BigEndian>() {
+                Ok(n) => n,
+                Err(_) => return None,
+            };
+        rv.length = match cursor.read_u16::<BigEndian>() {
+                Ok(n) => n,
+                Err(_) => return None,
+            };
         
         for i in 0..rv.length {
-            rv.data.push(cursor.read_u8().unwrap());
+            let b = match cursor.read_u8() {
+                Ok(n) => n,
+                Err(_) => return None,
+            };
+            rv.data.push(b);
         }
 
         return Some(rv);
@@ -814,11 +959,11 @@ impl OpCommand{
 
 #[derive(Debug)]
 pub struct OpDmx {
-    sequence: u8,
-    physical: u8,
-    universe: u16,
-    length: u16,
-    data: Vec<u8>,
+    pub sequence: u8,
+    pub physical: u8,
+    pub universe: u16,
+    pub length: u16,
+    pub data: Vec<u8>,
 }
 
 impl OpDmx {
@@ -865,16 +1010,34 @@ impl OpDmx {
         let mut cursor = Cursor::new(data);
 
         let mut pad_bytes : [u8; 12] = [0; 12];
-        cursor.read_exact(&mut pad_bytes).unwrap();
+        if let Err(_) = cursor.read_exact(&mut pad_bytes) {
+            return None;
+        }
 
-        rv.sequence = cursor.read_u8().unwrap();
-        rv.physical = cursor.read_u8().unwrap();
+        rv.sequence = match cursor.read_u8() {
+                Ok(n) => n,
+                Err(_) => return None,
+            };
+        rv.physical = match cursor.read_u8() {
+                Ok(n) => n,
+                Err(_) => return None,
+            };
 
-        rv.universe = cursor.read_u16::<LittleEndian>().unwrap();
-        rv.length = cursor.read_u16::<BigEndian>().unwrap();
+        rv.universe = match cursor.read_u16::<LittleEndian>() {
+                Ok(n) => n,
+                Err(_) => return None,
+            };
+        rv.length = match cursor.read_u16::<BigEndian>() {
+                Ok(n) => n,
+                Err(_) => return None,
+            };
         
         for i in 0..rv.length {
-            rv.data.push(cursor.read_u8().unwrap());
+            let b = match cursor.read_u8() {
+                Ok(n) => n,
+                Err(_) => return None,
+            };
+            rv.data.push(b);
         }
 
         return Some(rv);
@@ -883,7 +1046,7 @@ impl OpDmx {
 
 #[derive(Debug)]
 pub struct OpError {
-    code: String,
+    pub code: String,
 }
 
 impl OpError {
