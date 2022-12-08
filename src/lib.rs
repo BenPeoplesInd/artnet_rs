@@ -1,3 +1,5 @@
+#![feature(cstr_from_bytes_until_nul)]
+
 use e1_20::Uid;
 use serde::{Deserialize, Serialize};
 use std::net::IpAddr;
@@ -8,6 +10,7 @@ use std::io::Write;
 use std::io::Read;
 use byteorder::{WriteBytesExt, ReadBytesExt, LittleEndian, BigEndian};
 use std::convert::TryInto;
+use std::ffi::CStr;
 
 
 const HEADER: [u8; 8] = [65, 114, 116, 45, 78, 101, 116, 0]; // "Art-Net"
@@ -477,19 +480,21 @@ impl OpPollReply {
         if let Err(_) = cursor.read_exact(&mut short_name_bytes) {
             return None;
         }
-        rv.short_name = String::from_utf8_lossy(&short_name_bytes).to_string();
+
+        // rv.short_name = 
+        rv.short_name = String::from_utf8_lossy(CStr::from_bytes_until_nul(&short_name_bytes).unwrap().to_bytes()).to_string();
         // Read long name
         let mut long_name_bytes = [0; 64];
         if let Err(_) = cursor.read_exact(&mut long_name_bytes) {
             return None;
         }
-        rv.long_name = String::from_utf8_lossy(&long_name_bytes).to_string();
+        rv.long_name = String::from_utf8_lossy(CStr::from_bytes_until_nul(&long_name_bytes).unwrap().to_bytes()).to_string();
         // Read node report
         let mut node_report_bytes = [0; 64];
         if let Err(_) = cursor.read_exact(&mut node_report_bytes) {
             return None;
         }
-        rv.node_report = String::from_utf8_lossy(&node_report_bytes).to_string(); // 172
+        rv.node_report = String::from_utf8_lossy(CStr::from_bytes_until_nul(&node_report_bytes).unwrap().to_bytes()).to_string(); // 172
 
         rv.num_ports = match cursor.read_u16::<LittleEndian>() {
                 Ok(n) => n,
