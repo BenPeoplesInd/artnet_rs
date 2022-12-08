@@ -451,10 +451,21 @@ impl OpPollReply {
                 Err(_) => return None,
             };
         // Read universe switch
-        rv.universe_switch = match cursor.read_u16::<BigEndian>() {
-                Ok(n) => n,
-                Err(_) => return None,
-            };
+        let low_bytes : u8 = match cursor.read_u8() {
+            Ok(n) => n,
+            Err(_) => return None,
+        };
+        let high_bytes : u8 = match cursor.read_u8() {
+            Ok(n) => n,
+            Err(_) => return None,
+        };
+
+        rv.universe_switch = ((low_bytes as u16) << 4) + ((high_bytes as u16) << 8);
+
+        // rv.universe_switch = match cursor.read_u16::<BigEndian>() {
+        //         Ok(n) => n,
+        //         Err(_) => return None,
+        //     };
         // Read oem
         rv.oem = match cursor.read_u16::<BigEndian>() {
                 Ok(n) => n,
