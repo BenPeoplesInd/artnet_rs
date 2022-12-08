@@ -324,13 +324,53 @@ impl OpPollReply {
         cursor.write_u16::<LittleEndian>(self.esta_mfg).unwrap();
         // Write short name
         let short_name_bytes = self.short_name.as_bytes();
-        cursor.write_all(&short_name_bytes).unwrap();
+
+        let mut short_name_array : [u8; 18] = [0; 18];
+
+        let mut index = 0;
+
+        for c in short_name_bytes {
+            short_name_array[index] = *c;
+            index += 1;
+            if index > 16 {
+                break;
+            }
+        }
+
+        cursor.write_all(&short_name_array).unwrap();
         // Write long name
         let long_name_bytes = self.long_name.as_bytes();
-        cursor.write_all(&long_name_bytes).unwrap();
+
+        let mut long_name_array : [u8; 18] = [0; 18];
+
+        let mut index = 0;
+
+        for c in long_name_bytes {
+            long_name_array[index] = *c;
+            index += 1;
+            if index > 62 {
+                break;
+            }
+        }
+
+        cursor.write_all(&long_name_array).unwrap();
         // Write node report
+
         let node_report_bytes = self.node_report.as_bytes();
-        cursor.write_all(&node_report_bytes).unwrap();
+
+        let mut node_report_array : [u8; 18] = [0; 18];
+
+        let mut index = 0;
+
+        for c in node_report_bytes {
+            node_report_array[index] = *c;
+            index += 1;
+            if index > 62 {
+                break;
+            }
+        }
+
+        cursor.write_all(&node_report_array).unwrap();
         // Write number of ports
         cursor.write_u16::<LittleEndian>(self.num_ports).unwrap();
         // Write port types
