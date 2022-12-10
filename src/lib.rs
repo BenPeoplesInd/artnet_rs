@@ -1,7 +1,7 @@
 #![feature(cstr_from_bytes_until_nul)]
+#![feature(test)]
 
 use e1_20::Uid;
-use serde::{Deserialize, Serialize};
 use std::net::IpAddr;
 use std::net::Ipv4Addr;
 use eui48::MacAddress;
@@ -11,7 +11,6 @@ use std::io::Read;
 use byteorder::{WriteBytesExt, ReadBytesExt, LittleEndian, BigEndian};
 use std::convert::TryInto;
 use std::ffi::CStr;
-
 
 const HEADER: [u8; 8] = [65, 114, 116, 45, 78, 101, 116, 0]; // "Art-Net"
 
@@ -176,6 +175,12 @@ impl ArtPkt {
 
 }
 
+impl Default for ArtPkt {
+    fn default() -> Self {
+         Self::new()
+     }
+}
+    
 
 #[derive(Debug)]
 pub struct OpPoll {
@@ -206,13 +211,13 @@ impl OpPoll {
         cursor.write_u8(self.flags).unwrap();
         cursor.write_u8(self.diag_priority).unwrap();
 
-        cursor.write_all(&[0 as u8; 4]).unwrap();
+        cursor.write_all(&[0_u8; 4]).unwrap();
 
         return data;
     }
 
     /// Assumes the packet has already been verified to be an ArtPoll
-    pub fn deserialize(data : &Vec<u8>) -> Option<OpPoll> {
+    pub fn deserialize(data : &[u8]) -> Option<OpPoll> {
 
         if data.len() < 14 {
             return None;
@@ -226,6 +231,12 @@ impl OpPoll {
         return Some(rv);
     }
 
+}
+
+impl Default for OpPoll {
+    fn default() -> Self {
+         Self::new()
+     }
 }
 
 // Cannot derive SerDes here for MacAddress
@@ -393,7 +404,7 @@ impl OpPollReply {
         // Write sw remote
         cursor.write_u8(self.sw_remote).unwrap();
 
-        cursor.write_all(&[0 as u8; 3]).unwrap();
+        cursor.write_all(&[0_u8; 3]).unwrap();
 
         cursor.write_u8(self.style).unwrap();
 
@@ -417,7 +428,7 @@ impl OpPollReply {
         let uid_bytes = self.default_responder.uid_serialize();
         cursor.write_all(&uid_bytes).unwrap();
 
-        cursor.write_all(&[0 as u8; 15]).unwrap();
+        cursor.write_all(&[0_u8; 15]).unwrap();
 
         return data;
     }
@@ -623,10 +634,10 @@ impl OpTodRequest {
         cursor.write_u8(14).unwrap();
 
         // Pad values
-        cursor.write_all(&[0 as u8; 2]).unwrap();
+        cursor.write_all(&[0_u8; 2]).unwrap();
 
         // Spare values
-        cursor.write_all(&[0 as u8; 7]).unwrap();
+        cursor.write_all(&[0_u8; 7]).unwrap();
 
         cursor.write_u8(self.net).unwrap();
 
@@ -725,7 +736,7 @@ impl OpTodData {
         cursor.write_u8(self.rdm_ver).unwrap();
         cursor.write_u8(self.port).unwrap();
         
-        cursor.write_all(&[0 as u8; 6]).unwrap();
+        cursor.write_all(&[0_u8; 6]).unwrap();
 
         cursor.write_u8(self.bind_index).unwrap();
         cursor.write_u8(self.net).unwrap();
@@ -800,7 +811,7 @@ impl OpTodData {
                 Err(_) => return None,
             };
 
-        for i in 0..(rv.uid_count as usize) {
+        for _ in 0..(rv.uid_count as usize) {
             let mut uid_bytes : [u8; 6] = [0; 6];
             if let Err(_) = cursor.read_exact(&mut uid_bytes) {
                 return None;
@@ -844,7 +855,7 @@ impl OpTodControl {
         cursor.write_u8(14).unwrap();
 
         // Pad/spare data
-        cursor.write_all(&[0 as u8; 9]).unwrap();
+        cursor.write_all(&[0_u8; 9]).unwrap();
 
         cursor.write_u8(self.net).unwrap();
         cursor.write_u8(self.command).unwrap();
@@ -909,7 +920,7 @@ impl OpRdm {
         cursor.write_u8(self.rdm_ver).unwrap();
 
         // Pad/spare data
-        cursor.write_all(&[0 as u8; 8]).unwrap();
+        cursor.write_all(&[0_u8; 8]).unwrap();
 
         cursor.write_u8(self.net).unwrap();
         cursor.write_u8(self.command).unwrap();
@@ -1003,7 +1014,7 @@ impl OpCommand{
                 Err(_) => return None,
             };
         
-        for i in 0..rv.length {
+        for _ in 0..rv.length {
             let b = match cursor.read_u8() {
                 Ok(n) => n,
                 Err(_) => return None,
@@ -1091,7 +1102,7 @@ impl OpDmx {
                 Err(_) => return None,
             };
         
-        for i in 0..rv.length {
+        for _ in 0..rv.length {
             let b = match cursor.read_u8() {
                 Ok(n) => n,
                 Err(_) => return None,
@@ -1120,10 +1131,13 @@ impl OpError {
     }
 
     /// Assumes the packet has already been verified to be an ArtPoll
-    pub fn deserialize(data : &Vec<u8>) -> Option<OpError> {
-        let mut rv = OpError::new();
+    pub fn deserialize(_data : &Vec<u8>) -> Option<OpError> {
+        let rv = OpError::new();
        
 
         return Some(rv);
     }
 }
+
+#[cfg(test)]
+mod tests;
