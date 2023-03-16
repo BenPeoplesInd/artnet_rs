@@ -726,7 +726,7 @@ impl OpTodData {
         cursor.write_all(&HEADER).unwrap();
         
         // OpCode
-        cursor.write_u16::<LittleEndian>(OpCodeValues::OpTodRequest as u16).unwrap();
+        cursor.write_u16::<LittleEndian>(OpCodeValues::OpTodData as u16).unwrap();
         
         // ProtVerHi = 0
         cursor.write_u8(0x00).unwrap();
