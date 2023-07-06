@@ -573,6 +573,14 @@ impl OpPollReply {
 
         rv.mac = MacAddress::from_bytes(&mac_bytes).unwrap_or_default(); 
 
+        let mut ip_bytes : [u8; 4] = [0; 4];
+
+        if let Err(_) = cursor.read_exact(&mut ip_bytes) {
+            return None;
+        }
+
+        rv.ip_address = IpAddr::V4(Ipv4Addr::new(ip_bytes[0], ip_bytes[1], ip_bytes[2], ip_bytes[3]));
+
         rv.bind_index = match cursor.read_u8() {
                 Ok(n) => n,
                 Err(_) => return None,
